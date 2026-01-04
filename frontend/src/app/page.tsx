@@ -13,7 +13,7 @@ export default function Home() {
     <>
       {/* Hero Section */}
       <Hero
-        title="Professional Photo Presets for Creators .."
+        title="Professional Photo Presets for Creators"
         subtitle="Transform your photos with one click. Professional-grade Lightroom presets designed for mobile photography, optimized for Sri Lankan lighting and skin tones."
         ctaText="View Presets"
         ctaLink="/products"
