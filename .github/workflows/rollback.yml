@@ -1,0 +1,56 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_sha:
+        description: 'Git SHA to rollback to (leave empty for previous version)'
+        required: false
+        type: string
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Rollback on VPS
+      uses: appleboy/ssh-action@master
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+        GIT_SHA: ${{ inputs.git_sha }}
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        password: ${{ secrets.VPS_PASSWORD }}
+        envs: DOCKER_USERNAME,DOCKER_PASSWORD,DOCKER_REGISTRY,GIT_SHA
+        script: |
+          set -e
+          
+          echo "⚠️  Starting rollback process..."
+          cd /opt/presetshop
+          
+          echo "🔐 Logging into Docker Hub..."
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+          
+          if [ -z "$GIT_SHA" ]; then
+            echo "📥 Rolling back to previous :latest images..."
+            TAG="latest"
+          else
+            echo "📥 Rolling back to specific version: $GIT_SHA"
+            TAG="$GIT_SHA"
+          fi
+          
+          echo "Pulling images with tag: $TAG"
+          docker pull ${DOCKER_REGISTRY}/presetshop-backend:${TAG}
+          docker pull ${DOCKER_REGISTRY}/presetshop-frontend:${TAG}
+          
+          echo "🔄 Restarting containers..."
+          docker-compose -f docker-compose.prod.yml down
+          docker-compose -f docker-compose.prod.yml up -d
+          
+          sleep 10
+          
+          echo "✅ Rollback completed!"
+          docker-compose -f docker-compose.prod.yml ps

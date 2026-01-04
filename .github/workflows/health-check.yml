@@ -1,0 +1,43 @@
+name: VPS Health Check
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Check VPS Health
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        password: ${{ secrets.VPS_PASSWORD }}
+        script: |
+          echo "🏥 Running health checks..."
+          
+          cd /opt/presetshop
+          
+          echo "📊 Container Status:"
+          docker-compose -f docker-compose.prod.yml ps
+          
+          echo ""
+          echo "💾 Resource Usage:"
+          docker stats --no-stream --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+          
+          echo ""
+          echo "💿 Disk Usage:"
+          df -h /opt/presetshop
+          docker system df
+          
+          echo ""
+          echo "🔍 Service Health:"
+          curl -f http://localhost/ || echo "❌ Frontend/Nginx failed"
+          curl -f http://localhost/api/health || echo "❌ Backend failed"
+          
+          echo ""
+          echo "✅ Health check complete!"

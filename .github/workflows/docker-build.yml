@@ -1,34 +1,45 @@
-name: Build & Push Docker Images
+name: Build and Push Docker Images
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
-
+      uses: actions/checkout@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+    
     - name: Login to Docker Hub
-      uses: docker/login-action@v3
+      uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Build & Push Backend
-      uses: docker/build-push-action@v5
+    
+    - name: Build and push Backend
+      uses: docker/build-push-action@v4
       with:
         context: ./backend
         push: true
-        tags: miyuranga/backend:latest
-
-    - name: Build & Push Frontend
-      uses: docker/build-push-action@v5
+        tags: |
+          ${{ secrets.DOCKER_REGISTRY }}/presetshop-backend:latest
+          ${{ secrets.DOCKER_REGISTRY }}/presetshop-backend:${{ github.sha }}
+        cache-from: type=registry,ref=${{ secrets.DOCKER_REGISTRY }}/presetshop-backend:latest
+        cache-to: type=inline
+    
+    - name: Build and push Frontend
+      uses: docker/build-push-action@v4
       with:
         context: ./frontend
         push: true
-        tags: miyuranga/frontend:latest
+        tags: |
+          ${{ secrets.DOCKER_REGISTRY }}/presetshop-frontend:latest
+          ${{ secrets.DOCKER_REGISTRY }}/presetshop-frontend:${{ github.sha }}
+        cache-from: type=registry,ref=${{ secrets.DOCKER_REGISTRY }}/presetshop-frontend:latest
+        cache-to: type=inline
