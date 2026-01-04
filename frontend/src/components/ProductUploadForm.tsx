@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import ImageUploadPreview from './ImageUploadPreview';
 import BeforeAfterPreview from './BeforeAfterPreview';
-import { ProductAPI, CreateProductData } from '@/lib/api';
+import { PresetAPI, CreatePresetData } from '@/lib/api';
 
 export default function ProductUploadForm() {
   const [formData, setFormData] = useState({
@@ -39,18 +39,17 @@ export default function ProductUploadForm() {
         throw new Error('Please select a main product image');
       }
 
-      const productData: CreateProductData = {
+      const presetData: CreatePresetData = {
         name: formData.name,
         description: formData.description,
         price: parseFloat(formData.price),
-        category: formData.category || undefined,
-        presetCount: parseInt(formData.presetCount),
-        mainImage: mainImage,
+        categoryId: formData.category ? parseInt(formData.category) : undefined,
+        presetFile: mainImage,
         beforeImage: beforeImage || undefined,
         afterImage: afterImage || undefined
       };
 
-      await ProductAPI.createProduct(productData);
+      await PresetAPI.create(presetData);
 
       setSuccess(true);
 
