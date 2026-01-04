@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ProjectX.API.Data.Enums;
 
 namespace ProjectX.API.Data.Models;
 
@@ -13,7 +14,11 @@ public class Product
     [Column(TypeName = "decimal(18,2)")]
     public decimal? Price { get; set; }
     public string? ImageUrl { get; set; }
-    public Enums.ProductEnum IsActive { get; set; }
+    public string? BeforeImageUrl { get; set; }
+    public string? AfterImageUrl { get; set; }
+    public string? Category { get; set; }
+    public int PresetCount { get; set; }
+    public ProductEnum IsActive { get; set; }
     public DateTime? CreateAt { get; set; }
 
 

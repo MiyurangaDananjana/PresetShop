@@ -1,5 +1,9 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using ProjectX.API.Data;
+using ProjectX.API.Service;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +33,52 @@ else if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("POSTGRES_HOST
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+// Register services
+builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IPresetService, PresetService>();
+builder.Services.AddScoped<IPurchaseService, PurchaseService>();
+
+// Configure JWT Authentication
+var jwtKey = builder.Configuration["JwtSettings:SecretKey"] ?? "HGY5678YTR432REWDSTYUHNB456789UD!";
+var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "PresetShopAPI";
+var jwtAudience = builder.Configuration["JwtSettings:Audience"] ?? "PresetShopClient";
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+    };
+});
+
+builder.Services.AddAuthorization();
+
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://frontend:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -47,6 +97,12 @@ using (var scope = app.Services.CreateScope())
         logger.LogInformation("Applying database migrations...");
         context.Database.Migrate();
         logger.LogInformation("Database migrations applied successfully");
+
+        // Seed default data
+        logger.LogInformation("Seeding default data...");
+        await DbInitializer.SeedDefaultAdminAsync(context);
+        await DbInitializer.SeedDefaultCategoriesAsync(context);
+        logger.LogInformation("Default data seeded successfully");
     }
     catch (Exception ex)
     {
@@ -63,7 +119,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Enable CORS
+app.UseCors("AllowFrontend");
+
+// Serve static files (uploaded images)
+app.UseStaticFiles();
+
 app.UseHttpsRedirection();
+
+// Authentication & Authorization middleware
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
